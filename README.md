@@ -4,9 +4,9 @@
 
 # Compilation
 Since I have replaced raylib with submodules for it to be compilable on linux, you have to clone submodules first
-##### If you haven't cloned yet:
+#### If you haven't cloned yet:
 - git clone --recurse-submodules https://github.com/InanisLector/kotte.git
-##### If you have:
+#### If you have:
 - git submodule update --init --recursive
 
 ##### Then just use cmake to compile it
