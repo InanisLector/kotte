@@ -1,0 +1,49 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "default",
+      "displayName": "Debug, update submodules",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "keep",
+      "displayName": "Debug, keep current submodule versions",
+      "inherits": "default",
+      "cacheVariables": {
+        "US": "OFF"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release, update submodules",
+      "inherits": "default",
+      "binaryDir": "${sourceDir}/build-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "rigid-release",
+      "displayName": "Release, keep current submodule versions",
+      "inherits": "release",
+      "binaryDir": "${sourceDir}/build-release",
+      "cacheVariables": {
+        "US": "OFF"
+      }
+		}
+  ],
+  "buildPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default"
+    },
+    {
+      "name": "release",
+      "configurePreset": "release"
+    }
+  ]
+}

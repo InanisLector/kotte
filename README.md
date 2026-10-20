@@ -1,6 +1,16 @@
 # Bomberman World — [your game title]
 
-**Student:** [your name]
+**Student:** Kuznietsov Illia
+
+# Compilation
+Since I have replaced raylib with submodules for it to be compilable on linux, you have to clone submodules first
+If you haven't cloned yet:
+    git clone --recurse-submodules <your-repo-url>
+If you have:
+    git submodule update --init --recursive
+
+Then just use cmake to compile it
+    cmake --build --preset windows
 
 > Replace the prompts below and remove these instructions. Keep answers brief. Your implementation explanations and reflection belong in the presentation; you do not need to write them out here. Complete the final section only if seeking Pass with Distinction (VG).
 
