@@ -23,7 +23,13 @@ namespace kotte
         , spatial_grid_{{
             static_cast<float>(map_.width() * tile_size_),
             static_cast<float>(map_.height() * tile_size_)}, spatial_cell_size_}
-        , seed_{seed}{
+        , seed_{seed}
+        , _player ([&] { // Why did collision have to be that way...
+                Entity player_entity {EntityKind::player, {tile_size_ * 2.5f, tile_size_ * 2.5f}};
+                PlayerData player {entities_.create(player_entity), 10};
+                spatial_grid_.insert(player.GetHandle(), entity_world_bounds(player_entity));
+                return player;
+           }()) {
         populate_entities();
         initialize_enemies();
     }
@@ -197,7 +203,7 @@ namespace kotte
         player_entity.world_position = Vector2Clamp(player_entity.world_position, minimum_position, maximum_position);
 
         const Rectangle new_world_bounds = entity_world_bounds(player_entity);
-        spatial_grid_.update(player_handle_, old_world_bounds, new_world_bounds);
+        spatial_grid_.update(_player.GetHandle(), old_world_bounds, new_world_bounds);
     }
 
     void Application::try_move_player(Vector2 axis_displacement){
@@ -208,7 +214,7 @@ namespace kotte
         const Vector2 proposed_position = player_entity.world_position + axis_displacement;
 
         // Detect possible contacts using the mover's proposed collision bounds.
-        if(entity_movement_is_blocked(player_handle_, proposed_position)){
+        if(entity_movement_is_blocked(_player.GetHandle(), proposed_position)){
             // Respond by rejecting only this blocked player axis.
             ++collision_diagnostics_.blocked_moves;
             return;
@@ -258,7 +264,7 @@ namespace kotte
         // Capture values rather than an Entity reference because the request
         // deliberately outlives this simulation phase.
         place_bomb_requests_.push_back({
-            player_handle_,
+            _player.GetHandle(),
             tile_centre(player().world_position)
         });
     }
@@ -553,10 +559,6 @@ namespace kotte
         // relocate slot storage. Handles remain valid even if this estimate grows.
         entities_.reserve(map_.tile_count() / 4);
 
-        const Entity player_entity{EntityKind::player, {tile_size_ * 2.5f, tile_size_ * 2.5f}};
-        player_handle_ = entities_.create(player_entity);
-        spatial_grid_.insert(player_handle_, entity_world_bounds(player_entity));
-
         for(int y = 1; y < map_.height() - 1; ++y){
             for(int x = 1; x < map_.width() - 1; ++x){
                 if((x == 2 && y == 2) || map_.at(x, y).type != TileType::floor || !random_.coin_flip(0.25f)){
@@ -608,11 +610,11 @@ namespace kotte
     }
 
     Entity& Application::player() noexcept{
-        return entity(player_handle_);
+        return entity(_player.GetHandle());
     }
 
     const Entity& Application::player() const noexcept{
-        return entity(player_handle_);
+        return entity(_player.GetHandle());
     }
 
     Rectangle Application::entity_world_bounds(const Entity& entity) const noexcept{

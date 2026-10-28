@@ -156,7 +156,7 @@ namespace kotte
         std::vector<BlastEffect> blast_effects_;
         CollisionDiagnostics collision_diagnostics_;
         std::uint64_t seed_;
-        EntityHandle player_handle_;
+        PlayerData _player;
         bool exit_requested_ = false;
     };
 }
