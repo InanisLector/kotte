@@ -46,6 +46,6 @@ namespace kotte
         EntityKind kind = EntityKind::crate;
         Vector2 world_position{};
         CardinalDirection movement_heading = CardinalDirection::right;
-        std::optional<BombState> bomb_state;
+        std::optional<BombState> bomb_state = std::nullopt;
     };
 }

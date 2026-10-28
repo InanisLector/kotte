@@ -67,7 +67,7 @@ foreach(dep IN LISTS EXTERNAL_DEPS)
 		)
 	endif()
 
-	add_subdirectory("${EXTERNAL_DIR}/${dep}")
+	add_subdirectory("${EXTERNAL_DIR}/${dep}" SYSTEM) # Because I am not touching the libraries
 endforeach()
 
 target_include_directories(${PROJECT_NAME} PRIVATE
