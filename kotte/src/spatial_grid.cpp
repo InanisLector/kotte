@@ -62,6 +62,10 @@ namespace kotte
         insert(entity_handle, new_world_bounds);
     }
 
+    void SpatialGrid::clear() {
+        cells_.clear();
+    }
+
     SpatialQuery SpatialGrid::query(Rectangle world_bounds) const{
         SpatialQuery result;
         const CellRange range = cells_overlapping(world_bounds);

@@ -33,6 +33,7 @@ namespace kotte
             EntityHandle entity_handle,
             Rectangle old_world_bounds,
             Rectangle new_world_bounds);
+        void clear();
 
         [[nodiscard]] SpatialQuery query(Rectangle world_bounds) const;
 

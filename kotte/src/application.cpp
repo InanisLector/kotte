@@ -576,6 +576,21 @@ namespace kotte
         DrawText("move: WASD/arrows | bomb: Space | quit: Q/Escape", 10, window_.height() - 30, 20, LIGHTGRAY);
     }
 
+    void Application::reset_game() {
+        spatial_grid_.clear();
+        entities_.clear();
+        enemy_handles_.clear();
+        active_bomb_handles_.clear();
+        blast_effects_.clear();
+
+        player_ = create_player();
+        random_ = Random{ seed_ };
+        game_state_ = GameState::ongoing;
+
+        populate_entities();
+        initialize_enemies();
+    }
+
     PlayerData Application::create_player() {
         return {entities_.create({EntityKind::player, {tile_size_ * 2.5f, tile_size_ * 2.5f}}), 10, 0.350};
     }

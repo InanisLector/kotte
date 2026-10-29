@@ -106,6 +106,7 @@ namespace kotte
             std::uint8_t range);
         void update_camera(float delta_time) noexcept;
         void render();
+        void reset_game();
         PlayerData create_player();
         void populate_entities();
         void initialize_enemies();
