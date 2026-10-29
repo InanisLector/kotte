@@ -24,18 +24,7 @@ namespace kotte
             static_cast<float>(map_.width() * tile_size_),
             static_cast<float>(map_.height() * tile_size_)}, spatial_cell_size_}
         , seed_{seed}
-        , player_ {[&] { // Why did collision have to be that way...
-                Entity player_entity {EntityKind::player, {tile_size_ * 2.5f, tile_size_ * 2.5f}};
-                PlayerData player {entities_.create(player_entity), 10, 0.350};
-
-                spatial_grid_.insert(player.get_handle(), entity_world_bounds(player_entity));
-                player.OnDeath.subscribe([this]{
-                        (void)this->destroy_entity_requests_.push_back({this->player_.get_handle()});
-                        this->game_state_ = GameState::lost;
-                    });
-
-                return player;
-                }()}
+        , player_ {create_player()}
         , game_state_{GameState::ongoing} {
         populate_entities();
         initialize_enemies();
@@ -176,8 +165,8 @@ namespace kotte
 
     void Application::apply_structural_mutations(){
         // Entity storage and every derived index change only at this boundary.
-        apply_entity_destructions();
         apply_bomb_placements();
+        apply_entity_destructions();
     }
 
     void Application::update_presentation(float delta_time){
@@ -417,7 +406,9 @@ namespace kotte
     void Application::update_camera(float delta_time) noexcept{
         (void) delta_time; // name the argument to avoid the static analyzer yelling at us. :) We'll animate the camera later.
         camera_.set_viewport_size(window_.size());
-        camera_.set_centre(player().world_position);
+
+        if(player_.is_alive())
+            camera_.set_centre(player().world_position);
     }
 
     void Application::render(){
@@ -585,10 +576,23 @@ namespace kotte
         DrawText("move: WASD/arrows | bomb: Space | quit: Q/Escape", 10, window_.height() - 30, 20, LIGHTGRAY);
     }
 
+    PlayerData Application::create_player() {
+        return {entities_.create({EntityKind::player, {tile_size_ * 2.5f, tile_size_ * 2.5f}}), 10, 0.350};
+    }
+
     void Application::populate_entities(){
         // Match the generation density so initial creation does not repeatedly
         // relocate slot storage. Handles remain valid even if this estimate grows.
         entities_.reserve(map_.tile_count() / 4);
+
+
+        // Player
+
+        spatial_grid_.insert(player_.get_handle(), entity_world_bounds(player()));
+        player_.OnDeath.subscribe([this]{
+                (void)this->destroy_entity_requests_.push_back({this->player_.get_handle()});
+                this->game_state_ = GameState::lost;
+            });
 
         for(int y = 1; y < map_.height() - 1; ++y){
             for(int x = 1; x < map_.width() - 1; ++x){
