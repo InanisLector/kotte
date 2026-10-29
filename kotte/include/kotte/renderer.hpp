@@ -3,7 +3,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <raylib.h>
+#include <string>
 #include <vector>
+#include <optional>
 
 namespace kotte
 {
@@ -19,6 +21,7 @@ namespace kotte
         RenderLayer layer = RenderLayer::world;
         float depth = 0.0f;
         float roundness = 0.0f;
+        std::optional<std::string> caption = std::nullopt;
     };
 
     class Renderer final {

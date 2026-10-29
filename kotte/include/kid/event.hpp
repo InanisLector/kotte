@@ -24,7 +24,7 @@ namespace kid {
         inline SubscriberID subscribe(FunctionRef function) {
             assert(currentId_ < std::numeric_limits<SubscriberID>::max());
 
-            calllist_.emplace_back(currentId_, std::move<function>);
+            calllist_.emplace_back(currentId_, std::move(function));
             return currentId_++;
         }
 

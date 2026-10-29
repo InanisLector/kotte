@@ -73,12 +73,18 @@ namespace kotte
             float remaining_seconds = 0.0f;
         };
 
+        enum GameState {
+            ongoing,
+            won,
+            lost
+        };
+
         void run_frame(float delta_time);
         void begin_frame() noexcept;
         void collect_frame_actions() noexcept;
         void update_gameplay(float delta_time);
         void update_timed_gameplay(float delta_time);
-        void resolve_gameplay_facts();
+        void resolve_gameplay_facts(float delta_time);
         void apply_structural_mutations();
         void update_presentation(float delta_time);
         void update_player(float delta_time);
@@ -156,7 +162,8 @@ namespace kotte
         std::vector<BlastEffect> blast_effects_;
         CollisionDiagnostics collision_diagnostics_;
         std::uint64_t seed_;
-        PlayerData _player;
+        PlayerData player_;
+        GameState game_state_;
         bool exit_requested_ = false;
     };
 }

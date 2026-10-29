@@ -6,6 +6,8 @@
 #include <optional>
 #include <raylib.h>
 
+#include "kid/event.hpp"
+
 namespace kotte
 {
     enum class EntityKind : std::uint8_t {
@@ -24,15 +26,24 @@ namespace kotte
 
     class PlayerData final {
     private:
-        uint8_t _health;
-        EntityHandle _handle;
+        uint8_t health_;
+        uint8_t damage_ = 0;
+        bool isAlive_ = true;
+        EntityHandle handle_;
+
+        float i_frame_timer_ = 0;
+        float i_frame_duration_;
 
     public:
-        inline uint8_t GetHealth() const { return _health; }
-        inline EntityHandle GetHandle() const { return _handle; }
-        inline void DealDamage(uint8_t damage);
+        kid::Event<> OnDeath;
 
-        PlayerData(EntityHandle playerHandle, uint8_t health = 10);
+        inline uint8_t get_health() const { return health_; }
+        inline bool is_alive() const { return isAlive_; }
+        inline EntityHandle get_handle() const { return handle_; }
+        void deal_damage(uint8_t damage);
+        void apply_update(float deltaTime);
+
+        PlayerData(EntityHandle playerHandle, uint8_t health = 10, float iFrameDuration = 0.350);
     };
 
     struct BombState final {

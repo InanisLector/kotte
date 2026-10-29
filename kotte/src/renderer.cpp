@@ -24,6 +24,12 @@ namespace kotte
     void Renderer::execute() const{
         for(const RenderCommand& command : commands_){
             DrawRectangleRounded(command.screen_bounds, command.roundness, 6, command.color);
+
+            if(command.caption.has_value())
+                DrawText(command.caption.value().c_str(),
+                        command.screen_bounds.x - command.caption.value().size() * 1,
+                        command.screen_bounds.y + command.screen_bounds.height,
+                        8, RAYWHITE);
         }
     }
 

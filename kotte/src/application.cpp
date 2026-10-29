@@ -24,12 +24,19 @@ namespace kotte
             static_cast<float>(map_.width() * tile_size_),
             static_cast<float>(map_.height() * tile_size_)}, spatial_cell_size_}
         , seed_{seed}
-        , _player ([&] { // Why did collision have to be that way...
+        , player_ {[&] { // Why did collision have to be that way...
                 Entity player_entity {EntityKind::player, {tile_size_ * 2.5f, tile_size_ * 2.5f}};
-                PlayerData player {entities_.create(player_entity), 10};
-                spatial_grid_.insert(player.GetHandle(), entity_world_bounds(player_entity));
+                PlayerData player {entities_.create(player_entity), 10, 0.350};
+
+                spatial_grid_.insert(player.get_handle(), entity_world_bounds(player_entity));
+                player.OnDeath.subscribe([this]{
+                        (void)this->destroy_entity_requests_.push_back({this->player_.get_handle()});
+                        this->game_state_ = GameState::lost;
+                    });
+
                 return player;
-           }()) {
+                }()}
+        , game_state_{GameState::ongoing} {
         populate_entities();
         initialize_enemies();
     }
@@ -49,17 +56,22 @@ namespace kotte
         // 5. Resolve gameplay facts into response decisions.
         // 6. Apply structural mutations at one synchronization point.
         // 7. Update presentation state from the synchronized world.
-        // 8. Extract, sort, and draw this frame's presentation values.
+        // 8. Update player state post resolution
+        // 9. Extract, sort, and draw this frame's presentation values.
         //
         // Keeping one call site per phase makes event lifetime and mutation
         // boundaries visible as the simulation grows.
         begin_frame();
         collect_frame_actions();
-        update_gameplay(delta_time);
-        update_timed_gameplay(delta_time);
-        resolve_gameplay_facts();
-        apply_structural_mutations();
-        update_presentation(delta_time);
+
+        if(game_state_ == GameState::ongoing) {
+            update_gameplay(delta_time);
+            update_timed_gameplay(delta_time);
+            resolve_gameplay_facts(delta_time);
+            apply_structural_mutations();
+            update_presentation(delta_time);
+        }
+
         render();
     }
 
@@ -134,7 +146,7 @@ namespace kotte
         }
     }
 
-    void Application::resolve_gameplay_facts(){
+    void Application::resolve_gameplay_facts(float delta_time){
         for(const BombDetonated& fact : bomb_detonated_facts_){
             BlastEffect effect;
             effect.remaining_seconds = blast_effect_seconds_;
@@ -158,6 +170,8 @@ namespace kotte
         }
 
         bomb_detonated_facts_.clear();
+
+        player_.apply_update(delta_time);
     }
 
     void Application::apply_structural_mutations(){
@@ -178,6 +192,9 @@ namespace kotte
     }
 
     void Application::update_player(float delta_time){
+        if(!player_.is_alive())
+            return;
+
         const Vector2 direction = frame_actions_.player_movement_direction;
 
         Entity& player_entity = player();
@@ -193,17 +210,19 @@ namespace kotte
         }
 
         const Rectangle player_bounds = entity_world_bounds(player_entity);
+
         const Vector2 bounds_offset = player_entity.world_position - Vector2{player_bounds.x, player_bounds.y};
         const float floor_left = static_cast<float>(tile_size_);
         const float floor_top = static_cast<float>(tile_size_);
         const float floor_right = static_cast<float>((map_.width() - 1) * tile_size_);
         const float floor_bottom = static_cast<float>((map_.height() - 1) * tile_size_);
+
         const Vector2 minimum_position{floor_left + bounds_offset.x, floor_top + bounds_offset.y};
         const Vector2 maximum_position{floor_right - bounds_offset.x, floor_bottom};
         player_entity.world_position = Vector2Clamp(player_entity.world_position, minimum_position, maximum_position);
 
         const Rectangle new_world_bounds = entity_world_bounds(player_entity);
-        spatial_grid_.update(_player.GetHandle(), old_world_bounds, new_world_bounds);
+        spatial_grid_.update(player_.get_handle(), old_world_bounds, new_world_bounds);
     }
 
     void Application::try_move_player(Vector2 axis_displacement){
@@ -214,7 +233,7 @@ namespace kotte
         const Vector2 proposed_position = player_entity.world_position + axis_displacement;
 
         // Detect possible contacts using the mover's proposed collision bounds.
-        if(entity_movement_is_blocked(_player.GetHandle(), proposed_position)){
+        if(entity_movement_is_blocked(player_.get_handle(), proposed_position)){
             // Respond by rejecting only this blocked player axis.
             ++collision_diagnostics_.blocked_moves;
             return;
@@ -264,7 +283,7 @@ namespace kotte
         // Capture values rather than an Entity reference because the request
         // deliberately outlives this simulation phase.
         place_bomb_requests_.push_back({
-            _player.GetHandle(),
+            player_.get_handle(),
             tile_centre(player().world_position)
         });
     }
@@ -367,7 +386,7 @@ namespace kotte
                 blocked_by_crate = true;
                 break;
             case EntityKind::player:
-                // Player-hit consequences are outside the Week 6 lifetime seam.
+                player_.deal_damage(2);
                 break;
             }
         }
@@ -485,13 +504,25 @@ namespace kotte
             const RenderLayer layer = visible_candidate->kind == EntityKind::bomb
                 ? RenderLayer::ground
                 : RenderLayer::world;
-            renderer_.submit({
-                bounds,
-                entity_color(visible_candidate->kind),
-                layer,
-                visible_candidate->world_position.y,
-                entity_roundness(visible_candidate->kind)
-            });
+
+            if(visible_candidate->kind == EntityKind::player) {
+                renderer_.submit({
+                    bounds,
+                    entity_color(visible_candidate->kind),
+                    layer,
+                    visible_candidate->world_position.y,
+                    entity_roundness(visible_candidate->kind),
+                    std::format("HP: {}", player_.get_health())
+                });
+            } else {
+                renderer_.submit({
+                    bounds,
+                    entity_color(visible_candidate->kind),
+                    layer,
+                    visible_candidate->world_position.y,
+                    entity_roundness(visible_candidate->kind)
+                });
+            }
         }
         renderer_.sort();
         renderer_.execute();
@@ -610,11 +641,11 @@ namespace kotte
     }
 
     Entity& Application::player() noexcept{
-        return entity(_player.GetHandle());
+        return entity(player_.get_handle());
     }
 
     const Entity& Application::player() const noexcept{
-        return entity(_player.GetHandle());
+        return entity(player_.get_handle());
     }
 
     Rectangle Application::entity_world_bounds(const Entity& entity) const noexcept{
@@ -648,7 +679,7 @@ namespace kotte
 
     bool Application::entity_movement_is_blocked(
         EntityHandle moving_entity_handle,
-        Vector2 proposed_position){
+        Vector2 proposed_position) {
         Entity proposed_entity = entity(moving_entity_handle);
         proposed_entity.world_position = proposed_position;
 
@@ -694,6 +725,13 @@ namespace kotte
             // Narrow phase: exact-test the remaining solid candidate.
             ++collision_diagnostics_.exact_tests;
             if(CheckCollisionRecs(proposed_collision_bounds, entity_collision_bounds(*candidate))){
+                bool player_collision = 
+                    (proposed_entity.kind == EntityKind::enemy && candidate->kind == EntityKind::player) ||
+                    (proposed_entity.kind == EntityKind::player && candidate->kind == EntityKind::enemy);
+
+                if(player_collision)
+                    player_.deal_damage(1);
+
                 ++collision_diagnostics_.contacts;
                 blocked = true;
             }
