@@ -51,6 +51,7 @@ namespace kotte
         float fuse_remaining = 0.0f;
         std::uint8_t blast_range = 0;
         bool detonation_requested = false;
+        bool owner_has_left = false;
     };
 
     struct Entity final {

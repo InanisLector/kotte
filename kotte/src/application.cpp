@@ -175,6 +175,16 @@ namespace kotte
 
         bomb_detonated_facts_.clear();
 
+        auto bomblist = active_bomb_handles_;
+        std::erase_if(bomblist, [this](EntityHandle h){return entity(h).bomb_state->owner_has_left;});
+
+        for(const auto& bomb_handle : bomblist) {
+            auto& bomb_entity = entity(bomb_handle);
+            if(!CheckCollisionRecs(entity_collision_bounds(entity(bomb_entity.bomb_state->owner)), entity_collision_bounds(bomb_entity))) {
+                bomb_entity.bomb_state->owner_has_left = true;
+            }
+        }
+
         player_.apply_update(delta_time);
     }
 
@@ -808,6 +818,14 @@ namespace kotte
                 continue;
             }
 
+            // Bomb half-solid state
+            if(candidate->kind == EntityKind::bomb) {
+                assert(candidate->bomb_state.has_value());
+
+                if((!candidate->bomb_state->owner_has_left) && candidate->bomb_state->owner == moving_entity_handle)
+                    continue;
+            }
+
             // Narrow phase: exact-test the remaining solid candidate.
             ++diagnostics_.exact_tests;
             if(CheckCollisionRecs(proposed_collision_bounds, entity_collision_bounds(*candidate))){
@@ -831,9 +849,8 @@ namespace kotte
         case EntityKind::player:
         case EntityKind::crate:
         case EntityKind::enemy:
-            return true;
         case EntityKind::bomb:
-            return false;
+            return true;
         }
 
         return false;
