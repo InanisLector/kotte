@@ -330,6 +330,7 @@ namespace kotte
                 continue;
             }
 
+
             const Entity bomb{
                 .kind = EntityKind::bomb,
                 .world_position = request.world_position,
@@ -339,6 +340,24 @@ namespace kotte
                     .blast_range = bomb_blast_range_
                 }
             };
+
+            const auto query = spatial_grid_.query(entity_collision_bounds(bomb));
+
+            bool available_space = true;
+
+            for(auto handle : query.entity_handles) {
+                if(handle == request.owner)
+                    continue;
+
+                available_space &= !CheckCollisionRecs(entity_collision_bounds(bomb), entity_collision_bounds(entity(handle)));
+
+                if(!available_space)
+                    break;
+            }
+
+            if(!available_space)
+                continue;
+
             const EntityHandle bomb_handle = entities_.create(bomb);
 
             // The store owns the bomb; these handles are synchronized, non-owning
