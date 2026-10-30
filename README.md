@@ -31,8 +31,8 @@ Use the practical checks in the assignment to validate the acceptance conditions
 | 1. Player damage and death | All is as expected. All test mentioned in Canvas passed. |
 | 2. Round states and objective | All is as expected. All test mentioned in Canvas passed. |
 | 3. Safe restart | All is as expected. All test mentioned in Canvas passed. |
-| 4. Solid bombs with owner escape | [what I tested, what I observed, and whether it matched the expected behaviour] |
-| 5. Blast-range pickup | [what I tested, what I observed, and whether it matched the expected behaviour] |
+| 4. Solid bombs with owner escape | All is as expected. All test mentioned in Canvas passed. |
+| 5. Blast-range pickup | All is as expected. All test mentioned in Canvas passed. |
 | [# and name of chosen extension 1] | [what I tested, what I observed, and whether it matched the expected behaviour] |
 | [# and name of chosen extension 2] | [what I tested, what I observed, and whether it matched the expected behaviour] |
 | [# and name of chosen extension 3] | [what I tested, what I observed, and whether it matched the expected behaviour] |
