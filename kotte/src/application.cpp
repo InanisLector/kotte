@@ -19,7 +19,7 @@ namespace kotte
         : window_{width, height, title, target_fps}
         , camera_{window_.size()}
         , random_{seed}
-        , map_{make_room(200, 120, random_)}
+        , map_{make_room(20, 12, random_)}
         , spatial_grid_{{
             static_cast<float>(map_.width() * tile_size_),
             static_cast<float>(map_.height() * tile_size_)}, spatial_cell_size_}
@@ -59,6 +59,7 @@ namespace kotte
             update_timed_gameplay(delta_time);
             resolve_gameplay_facts(delta_time);
             apply_structural_mutations();
+            check_win_conditions();
             update_presentation(delta_time);
             render();
         } else {
@@ -171,6 +172,11 @@ namespace kotte
         // Entity storage and every derived index change only at this boundary.
         apply_bomb_placements();
         apply_entity_destructions();
+    }
+
+    void Application::check_win_conditions() {
+        if(enemy_handles_.size() == 0)
+            game_state_ = GameState::won;
     }
 
     void Application::update_presentation(float delta_time){

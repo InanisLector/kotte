@@ -106,6 +106,7 @@ namespace kotte
         void update_timed_gameplay(float delta_time);
         void resolve_gameplay_facts(float delta_time);
         void apply_structural_mutations();
+        void check_win_conditions();
         void update_presentation(float delta_time);
         void update_player(float delta_time);
         void try_move_player(Vector2 axis_displacement);
