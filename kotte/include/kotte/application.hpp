@@ -174,6 +174,7 @@ namespace kotte
         static constexpr Color blast_color_{0xf2, 0x8f, 0x3b, 0xe8};
         static constexpr Color crate_color_{0xb0, 0x72, 0x3c, 0xff};
         static constexpr Color enemy_color_{0xd9, 0x4f, 0x70, 0xff};
+        static constexpr Color pickup_color_{0xc6, 0xED, 0x47, 0xff};
         static constexpr Color wall_color_{0x78, 0x5f, 0x47, 0xff};
 
         Window window_; // Constructed first, destroyed last.

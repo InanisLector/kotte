@@ -13,6 +13,7 @@ namespace kotte
     enum class EntityKind : std::uint8_t {
         player,
         bomb,
+        pickup,
         crate,
         enemy
     };
@@ -26,10 +27,12 @@ namespace kotte
 
     class PlayerData final {
     private:
-        uint8_t health_;
-        uint8_t damage_ = 0;
+        std::uint8_t health_;
+        std::uint8_t damage_ = 0;
         bool isAlive_ = true;
         EntityHandle handle_;
+
+        std::uint8_t blast_range_ = 3;
 
         float i_frame_timer_ = 0;
         float i_frame_duration_;
@@ -40,6 +43,8 @@ namespace kotte
         inline uint8_t get_health() const { return health_; }
         inline bool is_alive() const { return isAlive_; }
         inline EntityHandle get_handle() const { return handle_; }
+        inline std::uint8_t get_bomb_range() const { return blast_range_; }
+        inline void pickup_upgrade() { blast_range_++; }
         void deal_damage(uint8_t damage);
         void apply_update(float deltaTime);
 
