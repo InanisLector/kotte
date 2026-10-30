@@ -10,10 +10,21 @@ Since I have replaced raylib with submodules for it to be compilable on linux, y
 - git submodule update --init --recursive
 
 ##### Then just use cmake to compile it
-For windows:
-- cmake --build --preset windows
-For linux:
-- cmake --build --preset default
+Linux -> Linux
+``````
+cmake --preset linux-release && cmake --build --preset linux-release
+``````
+
+Windows -> Windows (VS generator is multi-config: configure once, pick config at build time)
+``````
+cmake --preset windows-msvc
+cmake --build --preset windows-release
+``````
+
+Linux -> Windows (sudo apt install mingw-w64)
+``````
+cmake --preset linux-to-windows-release && cmake --build --preset linux-to-windows-release
+``````
 
 ## How to play
 
@@ -26,7 +37,7 @@ For linux:
 | Feature | Check, observed result, and expected behaviour |
 | --- | --- |
 | 1. Player damage and death | I checked both possible damage sources and the delay between damage ticks. All works as expected. |
-| 2. Round states and objective | I if you both lose and win on the same frame - winning is prioritised, as expected. |
+| 2. Round states and objective | I if you both lose and win on the same frame - losing is prioritised, as expected. |
 | 3. Safe restart | After restart, all used lists get cleared in an appropriate phase of the run cycle, without refering to something that doesn't exist anymore. |
 | 4. Solid bombs with owner escape | Bombs let the owner escape, before preventing morement. If placement would result in bomb sharing a space with another entity - it's aborted. |
 | 5. Blast-range pickup | Default blast range is three, but it increases with 1 by every pick up. Though pick ups are limited by how many spawn, so it's fine. |

@@ -54,6 +54,7 @@ namespace kotte
             render_gameplay();
             render_flush();
             render_diagnostics();
+
         } else {
             update_ui_status(delta_time);
 
@@ -200,6 +201,9 @@ namespace kotte
     }
 
     void Application::check_win_conditions() {
+        if(game_state_ == GameState::lost)
+            return;
+
         if(CheckCollisionRecs(entity_collision_bounds(player()), entity_collision_bounds(entity(gate_))) && gate_unlocked_)
             game_state_ = GameState::won;
     }
@@ -673,9 +677,13 @@ namespace kotte
             "world: {} x {} tiles | {} total", map_.width(), map_.height(), map_.tile_count());
         DrawText(diagnostics.c_str(), 10, window_.height() - 54, 20, RAYWHITE);
 
-        diagnostics = std::format(
-            "move: WASD/arrows | lit bomb {}/1: Space | unlit bomb {}/{}: R| quit: Q/Escape", (uint8_t)!owner_has_active_bomb(player_.get_handle()), player_.get_number_of_concurent_unlit_bombs() - count_unlit_bombs_with_owner(player_.get_handle()), player_.get_number_of_concurent_unlit_bombs());
-        DrawText(diagnostics.c_str(), 10, window_.height() - 30, 20, LIGHTGRAY);
+        if(game_state_ == GameState::ongoing) {
+            diagnostics = std::format(
+                "move: WASD/arrows | lit bomb {}/1: Space | unlit bomb {}/{}: R | quit: Q/Escape", (uint8_t)!owner_has_active_bomb(player_.get_handle()), player_.get_number_of_concurent_unlit_bombs() - count_unlit_bombs_with_owner(player_.get_handle()), player_.get_number_of_concurent_unlit_bombs());
+            DrawText(diagnostics.c_str(), 10, window_.height() - 30, 20, LIGHTGRAY);
+        } else {
+            DrawText("move: WASD/arrows | confirm choince: Space | quit: Q/Escape", 10, window_.height() - 30, 20, LIGHTGRAY);
+        }
     }
 
     void Application::render_restart_UI() {

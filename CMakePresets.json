@@ -1,49 +1,61 @@
 {
   "version": 6,
   "configurePresets": [
-    {
-      "name": "default",
-      "displayName": "Debug, update submodules",
-      "binaryDir": "${sourceDir}/build",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
-      }
+		{
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
-      "name": "keep",
-      "displayName": "Debug, keep current submodule versions",
-      "inherits": "default",
-      "cacheVariables": {
-        "US": "OFF"
-      }
+      "name": "linux-base",
+      "hidden": true,
+      "inherits": "base",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
     },
     {
-      "name": "release",
-      "displayName": "Release, update submodules",
-      "inherits": "default",
-      "binaryDir": "${sourceDir}/build-release",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
-      }
+      "name": "linux-debug",
+      "displayName": "Linux native, Debug",
+      "inherits": "linux-base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
     },
     {
-      "name": "rigid-release",
-      "displayName": "Release, keep current submodule versions",
-      "inherits": "release",
-      "binaryDir": "${sourceDir}/build-release",
-      "cacheVariables": {
-        "US": "OFF"
-      }
-		}
-  ],
-  "buildPresets": [
-    {
-      "name": "default",
-      "configurePreset": "default"
+      "name": "linux-release",
+      "displayName": "Linux native, Release",
+      "inherits": "linux-base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
     },
     {
-      "name": "release",
-      "configurePreset": "release"
+      "name": "windows-msvc",
+      "displayName": "Windows native (Visual Studio, multi-config)",
+      "inherits": "base",
+      "architecture": { "value": "x64" },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    },
+    {
+      "name": "mingw-base",
+      "hidden": true,
+      "inherits": "linux-base",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/linux-to-windows.cmake"
+    },
+    {
+      "name": "linux-to-windows-debug",
+      "displayName": "Cross: Linux -> Windows, Debug",
+      "inherits": "mingw-base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+    },
+    {
+      "name": "linux-to-windows-release",
+      "displayName": "Cross: Linux -> Windows, Release",
+      "inherits": "mingw-base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
     }
+  ],
+	"buildPresets": [
+    { "name": "linux-debug", "configurePreset": "linux-debug" },
+    { "name": "linux-release", "configurePreset": "linux-release" },
+    { "name": "windows-debug", "configurePreset": "windows-msvc", "configuration": "Debug" },
+    { "name": "windows-release", "configurePreset": "windows-msvc", "configuration": "Release" },
+    { "name": "linux-to-windows-debug", "configurePreset": "linux-to-windows-debug" },
+    { "name": "linux-to-windows-release", "configurePreset": "linux-to-windows-release" }
   ]
 }
