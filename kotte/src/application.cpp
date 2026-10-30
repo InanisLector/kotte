@@ -194,7 +194,7 @@ namespace kotte
     }
 
     void Application::check_win_conditions() {
-        if(enemy_handles_.size() == 0)
+        if(CheckCollisionRecs(entity_collision_bounds(player()), entity_collision_bounds(entity(gate_))) && gate_unlocked_)
             game_state_ = GameState::won;
     }
 
@@ -396,6 +396,9 @@ namespace kotte
         std::erase_if(enemy_handles_, [this](EntityHandle handle){
             return !entities_.contains(handle);
         });
+
+        gate_unlocked_ = enemy_handles_.size() == 0;
+
         std::erase_if(active_bomb_handles_, [this](EntityHandle handle){
             return !entities_.contains(handle);
         });
@@ -430,6 +433,7 @@ namespace kotte
             switch(candidate->kind){
             case EntityKind::bomb:
             case EntityKind::pickup:
+            case EntityKind::gate:
                 break;
             case EntityKind::enemy:
                 destroy_entity_requests_.push_back({handle});
@@ -553,7 +557,9 @@ namespace kotte
             const Vector2 screen_position = camera_.world_to_screen({bounds.x, bounds.y});
             bounds.x = screen_position.x;
             bounds.y = screen_position.y;
-            const RenderLayer layer = visible_candidate->kind == EntityKind::bomb || visible_candidate->kind == EntityKind::pickup
+            const RenderLayer layer = visible_candidate->kind == EntityKind::bomb
+                                    || visible_candidate->kind == EntityKind::pickup
+                                    || visible_candidate->kind == EntityKind::gate
                 ? RenderLayer::ground
                 : RenderLayer::world;
 
@@ -674,6 +680,7 @@ namespace kotte
 
         player_ = create_player();
         random_ = Random{ seed_ };
+        gate_unlocked_ = false;
         game_state_ = GameState::ongoing;
 
         populate_entities();
@@ -700,12 +707,16 @@ namespace kotte
         auto pickup_handle = entities_.create(Entity(EntityKind::pickup, {tile_size_ * 1.5f, tile_size_ * 4.5f}));
         spatial_grid_.insert(std::move(pickup_handle), entity_world_bounds(entity(pickup_handle)));
 
+        gate_ = entities_.create(Entity(EntityKind::gate, {tile_size_ * (map_.width() - 1.5f), tile_size_ * (map_.height() - 1.5f)}));
+        spatial_grid_.insert(gate_, entity_world_bounds(entity(gate_)));
+
         for(int y = 1; y < map_.height() - 1; ++y){
             for(int x = 1; x < map_.width() - 1; ++x){
                 if((x == 2 && y == 2) // player
                         || map_.at(x, y).type != TileType::floor 
                         || !random_.coin_flip(0.25f)
-                        || (x == 2 && y == 5)){ // pick up
+                        || (x == 2 && y == 5) // pick up
+                        || (x == map_.width() - 2 && y == map_.height() - 2)){ 
                     continue;
                 }
 
@@ -729,6 +740,8 @@ namespace kotte
                 }
             }
         }
+
+        gate_unlocked_ = enemy_handles_.size() == 0;
     }
 
     void Application::initialize_enemies(){
@@ -769,6 +782,7 @@ namespace kotte
         case EntityKind::crate: size = {36.0f, 48.0f}; break;
         case EntityKind::enemy: size = {28.0f, 30.0f}; break;
         case EntityKind::pickup: size = {22.0f, 22.0f}; break;
+        case EntityKind::gate: size = {22.0f, 22.0f}; break;
         }
 
         const Vector2 top_left = entity.world_position - Vector2{size.x / 2.0f, size.y};
@@ -786,6 +800,7 @@ namespace kotte
         case EntityKind::crate: size = {32.0f, 32.0f}; break;
         case EntityKind::enemy: size = {24.0f, 14.0f}; break;
         case EntityKind::pickup: size = {18.0f, 12.0f}; break;
+        case EntityKind::gate: size = {18.0f, 12.0f}; break;
         }
 
         const Vector2 top_left = entity.world_position - Vector2{size.x / 2.0f, size.y};
@@ -871,6 +886,7 @@ namespace kotte
         case EntityKind::bomb:
             return true;
         case EntityKind::pickup:
+        case EntityKind::gate:
             return false;
         }
 
@@ -925,13 +941,16 @@ namespace kotte
         };
     }
 
-    Color Application::entity_color(EntityKind kind) noexcept{
+    Color Application::entity_color(EntityKind kind) const noexcept{
         switch(kind){
         case EntityKind::player: return player_color_;
         case EntityKind::bomb: return bomb_color_;
         case EntityKind::crate: return crate_color_;
         case EntityKind::enemy: return enemy_color_;
         case EntityKind::pickup: return pickup_color_;
+        case EntityKind::gate: return gate_unlocked_
+                               ? unlocked_gate_color_
+                                :locked_gate_color_;
         }
         return MAGENTA;
     }

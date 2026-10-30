@@ -33,7 +33,7 @@ Use the practical checks in the assignment to validate the acceptance conditions
 | 3. Safe restart | All is as expected. All test mentioned in Canvas passed. |
 | 4. Solid bombs with owner escape | All is as expected. All test mentioned in Canvas passed. |
 | 5. Blast-range pickup | All is as expected. All test mentioned in Canvas passed. |
-| [# and name of chosen extension 1] | [what I tested, what I observed, and whether it matched the expected behaviour] |
+| 10. Exit or progression gate | I really can't say anything. Everything goes as it's meant to. |
 | [# and name of chosen extension 2] | [what I tested, what I observed, and whether it matched the expected behaviour] |
 | [# and name of chosen extension 3] | [what I tested, what I observed, and whether it matched the expected behaviour] |
 

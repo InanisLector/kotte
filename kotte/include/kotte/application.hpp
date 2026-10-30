@@ -153,8 +153,8 @@ namespace kotte
         [[nodiscard]] bool owner_has_active_bomb(EntityHandle owner) const noexcept;
         [[nodiscard]] static Vector2 tile_centre(Vector2 world_position) noexcept;
         [[nodiscard]] static Vector2 tile_centre(int column, int row) noexcept;
-        [[nodiscard]] static Color entity_color(EntityKind kind) noexcept;
         [[nodiscard]] static float entity_roundness(EntityKind kind) noexcept;
+        [[nodiscard]] Color entity_color(EntityKind kind) const noexcept;
         static constexpr int tile_size_ = 40;
         static constexpr int spatial_cell_tiles_ = 8;
         static constexpr float spatial_cell_size_ = tile_size_ * spatial_cell_tiles_;
@@ -175,6 +175,8 @@ namespace kotte
         static constexpr Color crate_color_{0xb0, 0x72, 0x3c, 0xff};
         static constexpr Color enemy_color_{0xd9, 0x4f, 0x70, 0xff};
         static constexpr Color pickup_color_{0xc6, 0xED, 0x47, 0xff};
+        static constexpr Color unlocked_gate_color_{0xbf, 0xb4, 0xd6, 0xff};
+        static constexpr Color locked_gate_color_{0x47, 0x06, 0x27, 0xff};
         static constexpr Color wall_color_{0x78, 0x5f, 0x47, 0xff};
 
         Window window_; // Constructed first, destroyed last.
@@ -194,7 +196,9 @@ namespace kotte
         Diagnostics diagnostics_;
         std::uint64_t seed_;
         PlayerData player_;
+        EntityHandle gate_;
         GameState game_state_;
+        bool gate_unlocked_ = false;
         SelectionMenu menu_ui_;
         bool exit_requested_ = false;
     };
