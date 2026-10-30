@@ -79,8 +79,8 @@ The trade-off is in extensibility: a direct check at `[Application.cpp:192]` is 
 ### Conclusion
 
 With god class architecture, a direct call is simpler to build something short term, since all the information is already available to the god class, but a lot less appropriate for expansion.
-Events become worthwhile once separate classes are large and contained enough to hide information, and have, at least 2 independent subscribers (e.g. score system, audio system, game-state system) react to them.
+Events become worthwhile once separate classes are large and contained enough to hide information, and have at least 2 independent subscribers (e.g. score system, audio system, game-state system) react to them.
 The trigger for refactoring would be splitting responsibilities out of `Application`.
 Before that - using observer pattern only provides decoupling exclusively on the publisher's side.
 
-I kept the event for death because it costs little and documents intent, but I did not convert further effects since the evidence shows no benefit on subscriver side, until responsibilities are separated.
+I kept the event for death because it costs little and documents intent, but I did not make further conversion, since the evidence shows no benefit on subscriber side, until responsibilities are separated.
