@@ -28,9 +28,9 @@ Use the practical checks in the assignment to validate the acceptance conditions
 
 | Feature | Check, observed result, and expected behaviour |
 | --- | --- |
-| 1. Player damage and death | [what I tested, what I observed, and whether it matched the expected behaviour] |
-| 2. Round states and objective | [what I tested, what I observed, and whether it matched the expected behaviour] |
-| 3. Safe restart | [what I tested, what I observed, and whether it matched the expected behaviour] |
+| 1. Player damage and death | All is as expected. All test mentioned in Canvas passed. |
+| 2. Round states and objective | All is as expected. All test mentioned in Canvas passed. |
+| 3. Safe restart | All is as expected. All test mentioned in Canvas passed. |
 | 4. Solid bombs with owner escape | [what I tested, what I observed, and whether it matched the expected behaviour] |
 | 5. Blast-range pickup | [what I tested, what I observed, and whether it matched the expected behaviour] |
 | [# and name of chosen extension 1] | [what I tested, what I observed, and whether it matched the expected behaviour] |
