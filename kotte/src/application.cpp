@@ -4,6 +4,8 @@
 #include <cassert>
 #include <cmath>
 #include <format>
+#include <optional>
+#include <raylib.h>
 #include <raymath.h>
 #include <string>
 #include <utility>
@@ -49,6 +51,8 @@ namespace kotte
         // 8. Update player state post resolution
         // 9. Extract, sort, and draw this frame's presentation values.
         //
+        // Yeah, no, I'm not keeping this up anymore
+        //
         // Keeping one call site per phase makes event lifetime and mutation
         // boundaries visible as the simulation grows.
         begin_frame();
@@ -61,11 +65,17 @@ namespace kotte
             apply_structural_mutations();
             check_win_conditions();
             update_presentation(delta_time);
-            render();
+
+            render_gameplay();
+            render_flush();
+            render_diagnostics();
         } else {
-            render();
-            if(IsKeyDown(KEY_R))
-                reset_game();
+            update_ui_status(delta_time);
+
+            render_gameplay();
+            render_restart_UI();
+            render_flush();
+            render_diagnostics();
         }
     }
 
@@ -75,7 +85,7 @@ namespace kotte
         assert(bomb_detonated_facts_.empty());
         assert(destroy_entity_requests_.empty());
         frame_actions_ = {};
-        collision_diagnostics_ = {};
+        diagnostics_ = {};
     }
 
     void Application::collect_frame_actions() noexcept{
@@ -190,6 +200,21 @@ namespace kotte
         update_camera(delta_time);
     }
 
+    
+    void Application::update_ui_status(float delta_time) {
+        menu_ui_.tick(delta_time);
+
+        if(frame_actions_.player_movement_direction.x != 0)
+            menu_ui_.try_move();
+
+        if(frame_actions_.place_bomb) {
+            if(menu_ui_.restart_is_selected())
+                reset_game();
+            else
+                exit_requested_ = true;
+        }
+    }
+
     void Application::update_player(float delta_time){
         if(!player_.is_alive())
             return;
@@ -226,7 +251,7 @@ namespace kotte
 
     void Application::try_move_player(Vector2 axis_displacement){
         // Propose one horizontal or vertical player movement.
-        ++collision_diagnostics_.movement_attempts;
+        ++diagnostics_.movement_attempts;
 
         Entity& player_entity = player();
         const Vector2 proposed_position = player_entity.world_position + axis_displacement;
@@ -234,7 +259,7 @@ namespace kotte
         // Detect possible contacts using the mover's proposed collision bounds.
         if(entity_movement_is_blocked(player_.get_handle(), proposed_position)){
             // Respond by rejecting only this blocked player axis.
-            ++collision_diagnostics_.blocked_moves;
+            ++diagnostics_.blocked_moves;
             return;
         }
 
@@ -247,8 +272,8 @@ namespace kotte
         // camera query. Off-screen enemies therefore keep simulating normally.
         for(const EntityHandle enemy_handle : enemy_handles_){
             // Each enemy is one mover with one cardinal movement attempt.
-            ++collision_diagnostics_.enemy_updates;
-            ++collision_diagnostics_.movement_attempts;
+            ++diagnostics_.enemy_updates;
+            ++diagnostics_.movement_attempts;
 
             Entity& enemy = entity(enemy_handle);
             const Rectangle old_world_bounds = entity_world_bounds(enemy);
@@ -260,8 +285,8 @@ namespace kotte
             // Detect a possible contact using this enemy's proposed bounds.
             if(entity_movement_is_blocked(enemy_handle, proposed_position)){
                 // Respond by turning without moving; retry the new heading next update.
-                ++collision_diagnostics_.blocked_moves;
-                ++collision_diagnostics_.enemy_turns;
+                ++diagnostics_.blocked_moves;
+                ++diagnostics_.enemy_turns;
                 enemy.movement_heading = different_enemy_direction(enemy.movement_heading);
                 continue;
             }
@@ -421,12 +446,11 @@ namespace kotte
             camera_.set_centre(player().world_position);
     }
 
-    void Application::render(){
+    void Application::render_gameplay(){
         Frame frame{background_color_};
 
         const Rectangle world_view = camera_.world_view();
         const TileRange visible_tiles = map_.tiles_overlapping(world_view, tile_size_);
-        std::size_t tiles_rendered = 0;
 
         for(int y = visible_tiles.first_row; y < visible_tiles.past_last_row; ++y){
             for(int x = visible_tiles.first_column; x < visible_tiles.past_last_column; ++x){
@@ -441,20 +465,26 @@ namespace kotte
                 };
                 const Vector2 tile_screen_position = camera_.world_to_screen(tile_world_position);
 
-                DrawRectangle(
+                renderer_.submit({{
+                    std::floor(tile_screen_position.x),
+                    std::floor(tile_screen_position.y),
+                    tile_size_ - 1,
+                    tile_size_ - 1},
+                    color,
+                    RenderLayer::floor});
+                /*DrawRectangle(
                     static_cast<int>(std::floor(tile_screen_position.x)),
                     static_cast<int>(std::floor(tile_screen_position.y)),
                     tile_size_ - 1,
                     tile_size_ - 1,
-                    color);
-                ++tiles_rendered;
+                    color);*/
+                ++diagnostics_.tiles_rendered;
             }
         }
 
+        //renderer_.clear();
+
         const SpatialQuery spatial_query = spatial_grid_.query(world_view);
-        std::size_t exact_visibility_tests = 0;
-        std::size_t visible_entities = 0;
-        renderer_.clear();
 
         // Blast effects are short-lived presentation values, not authoritative
         // entities. Rebuilding commands here keeps their lifetime out of gameplay.
@@ -493,12 +523,12 @@ namespace kotte
             }
 
             Rectangle bounds = entity_world_bounds(*visible_candidate);
-            ++exact_visibility_tests;
+            ++diagnostics_.exact_visibility_tests;
             if(!CheckCollisionRecs(bounds, world_view)){
                 continue;
             }
 
-            ++visible_entities;
+            ++diagnostics_.visible_entities;
             const Vector2 screen_position = camera_.world_to_screen({bounds.x, bounds.y});
             bounds.x = screen_position.x;
             bounds.y = screen_position.y;
@@ -525,55 +555,55 @@ namespace kotte
                 });
             }
         }
-        renderer_.sort();
-        renderer_.execute();
+    }
 
+    void Application::render_diagnostics() {
         std::string diagnostics;
         const double percent_of_entities = entities_.live_count() == 0
             ? 0.0
-            : 100.0 * static_cast<double>(visible_entities) / static_cast<double>(entities_.live_count());
+            : 100.0 * static_cast<double>(diagnostics_.visible_entities) / static_cast<double>(entities_.live_count());
 
         // A naive collision loop would test every entity for every movement
         // attempt. Compare that full-scan count with the local broad-phase
         // candidates; this is candidate reduction, not a measured FPS gain.
-        const double naive_collision_work = static_cast<double>(collision_diagnostics_.movement_attempts)
+        const double naive_collision_work = static_cast<double>(diagnostics_.movement_attempts)
             * static_cast<double>(entities_.live_count());
         const double broad_phase_reduction = naive_collision_work == 0.0
             ? 0.0
-            : 100.0 * (1.0 - static_cast<double>(collision_diagnostics_.unique_candidates) / naive_collision_work);
+            : 100.0 * (1.0 - static_cast<double>(diagnostics_.unique_candidates) / naive_collision_work);
 
         DrawFPS(GetScreenWidth() - 100, 2);
 
-        const double percent_of_world = map_.tile_count() == 0 ? 0.0 : 100.0 * static_cast<double>(tiles_rendered) / static_cast<double>(map_.tile_count());
+        const double percent_of_world = map_.tile_count() == 0 ? 0.0 : 100.0 * static_cast<double>(diagnostics_.tiles_rendered) / static_cast<double>(map_.tile_count());
         diagnostics = std::format(
-            "tiles rendered: {} ({:.1f}% of world)", tiles_rendered, percent_of_world);
+            "tiles rendered: {} ({:.1f}% of world)", diagnostics_.tiles_rendered, percent_of_world);
         DrawText(diagnostics.c_str(), 10, 10, 20, RAYWHITE);
 
         diagnostics = std::format(
             "entities: {} visible ({:.1f}% of {}) | {} visibility tests | {} commands",
-            visible_entities,
+            diagnostics_.visible_entities,
             percent_of_entities,
             entities_.live_count(),
-            exact_visibility_tests,
+            diagnostics_.exact_visibility_tests,
             renderer_.command_count());
         DrawText(diagnostics.c_str(), 10, 34, 20, RAYWHITE);
 
         diagnostics = std::format(
             "enemies updated: {} | active bombs: {} | blast effects: {}",
-            collision_diagnostics_.enemy_updates,
+            diagnostics_.enemy_updates,
             active_bomb_handles_.size(),
             blast_effects_.size());
         DrawText(diagnostics.c_str(), 10, 58, 20, RAYWHITE);
 
         diagnostics = std::format(
             "broad phase: {} candidates | {:.1f}% fewer than full scan",
-            collision_diagnostics_.unique_candidates, broad_phase_reduction);
+            diagnostics_.unique_candidates, broad_phase_reduction);
         DrawText(diagnostics.c_str(), 10, 82, 20, RAYWHITE);
 
         diagnostics = std::format(
             "narrow phase: {} exact tests | {} contacts",
-            collision_diagnostics_.exact_tests,
-            collision_diagnostics_.contacts);
+            diagnostics_.exact_tests,
+            diagnostics_.contacts);
         DrawText(diagnostics.c_str(), 10, 106, 20, RAYWHITE);
 
         diagnostics = std::format("seed: {}", seed_);
@@ -584,6 +614,34 @@ namespace kotte
         DrawText(diagnostics.c_str(), 10, window_.height() - 54, 20, RAYWHITE);
 
         DrawText("move: WASD/arrows | bomb: Space | quit: Q/Escape", 10, window_.height() - 30, 20, LIGHTGRAY);
+    }
+
+    void Application::render_restart_UI() {
+        Rectangle restart {GetScreenWidth() / 3.0f - 50, GetScreenHeight() / 2.0f, 100, 20};
+        Rectangle quit {GetScreenWidth() / 1.5f - 50, GetScreenHeight() / 2.0f, 100, 20};
+        Rectangle state {GetScreenWidth() / 2.0f - 100, GetScreenHeight() / 1.5f, 200, 60};
+
+        if(menu_ui_.restart_is_selected()) {
+            renderer_.submitUI({restart, "Restart", 14, BLACK, WHITE, RED});
+            renderer_.submitUI({quit, "Quit", 14, BLACK, WHITE, std::nullopt});
+        } else {
+            renderer_.submitUI({restart, "Restart", 14, BLACK, WHITE, std::nullopt});
+            renderer_.submitUI({quit, "Quit", 14, BLACK, WHITE, RED});
+        }
+
+        std::string text;
+        if(game_state_ == GameState::won)
+            text = "You've won";
+        else
+            text = "You've lost";
+        
+        renderer_.submitUI({state, text, 30, BLACK, WHITE, BLACK});
+    }
+
+    void Application::render_flush() {
+        renderer_.sort();
+        renderer_.execute();
+        renderer_.clear();
     }
 
     void Application::reset_game() {
@@ -723,7 +781,7 @@ namespace kotte
             || proposed_world_bounds.x + proposed_world_bounds.width > floor_right
             || proposed_world_bounds.y + proposed_world_bounds.height > floor_bottom;
         if(leaves_room){
-            ++collision_diagnostics_.boundary_blocks;
+            ++diagnostics_.boundary_blocks;
             return true;
         }
 
@@ -731,11 +789,11 @@ namespace kotte
 
         // Broad phase: query nearby candidates using the proposed bounds.
         const SpatialQuery spatial_query = spatial_grid_.query(proposed_collision_bounds);
-        ++collision_diagnostics_.spatial_queries;
-        collision_diagnostics_.cells_visited += spatial_query.cells_visited;
-        collision_diagnostics_.candidate_references += spatial_query.candidate_references;
+        ++diagnostics_.spatial_queries;
+        diagnostics_.cells_visited += spatial_query.cells_visited;
+        diagnostics_.candidate_references += spatial_query.candidate_references;
         // These counters aggregate work across movers, not globally unique entities.
-        collision_diagnostics_.unique_candidates += spatial_query.entity_handles.size();
+        diagnostics_.unique_candidates += spatial_query.entity_handles.size();
 
         bool blocked = false;
 
@@ -751,7 +809,7 @@ namespace kotte
             }
 
             // Narrow phase: exact-test the remaining solid candidate.
-            ++collision_diagnostics_.exact_tests;
+            ++diagnostics_.exact_tests;
             if(CheckCollisionRecs(proposed_collision_bounds, entity_collision_bounds(*candidate))){
                 bool player_collision = 
                     (proposed_entity.kind == EntityKind::enemy && candidate->kind == EntityKind::player) ||
@@ -760,7 +818,7 @@ namespace kotte
                 if(player_collision)
                     player_.deal_damage(1);
 
-                ++collision_diagnostics_.contacts;
+                ++diagnostics_.contacts;
                 blocked = true;
             }
         }

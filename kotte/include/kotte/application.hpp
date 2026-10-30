@@ -17,7 +17,7 @@
 
 namespace kotte
 {
-    struct CollisionDiagnostics final {
+    struct Diagnostics final {
         std::size_t enemy_updates = 0;
         std::size_t movement_attempts = 0;
         std::size_t spatial_queries = 0;
@@ -29,6 +29,9 @@ namespace kotte
         std::size_t boundary_blocks = 0;
         std::size_t blocked_moves = 0;
         std::size_t enemy_turns = 0;
+        std::size_t tiles_rendered = 0;
+        std::size_t exact_visibility_tests = 0;
+        std::size_t visible_entities = 0;
     };
 
     class Application final{
@@ -108,6 +111,7 @@ namespace kotte
         void apply_structural_mutations();
         void check_win_conditions();
         void update_presentation(float delta_time);
+        void update_ui_status(float delta_time);
         void update_player(float delta_time);
         void try_move_player(Vector2 axis_displacement);
         void update_enemies(float delta_time);
@@ -126,8 +130,10 @@ namespace kotte
             int row_step,
             std::uint8_t range);
         void update_camera(float delta_time) noexcept;
-        void render();
+        void render_gameplay();
+        void render_diagnostics();
         void render_restart_UI();
+        void render_flush();
         void reset_game();
         PlayerData create_player();
         void populate_entities();
@@ -184,7 +190,7 @@ namespace kotte
         std::vector<BombDetonated> bomb_detonated_facts_;
         std::vector<DestroyEntityRequest> destroy_entity_requests_;
         std::vector<BlastEffect> blast_effects_;
-        CollisionDiagnostics collision_diagnostics_;
+        Diagnostics diagnostics_;
         std::uint64_t seed_;
         PlayerData player_;
         GameState game_state_;
