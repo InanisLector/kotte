@@ -331,10 +331,13 @@ namespace kotte
     void Application::apply_bomb_placements(){
         for(const PlaceBombRequest& request : place_bomb_requests_){
             const Entity* owner = entities_.try_get(request.owner);
-            if(owner == nullptr || owner->kind != EntityKind::player
-                || owner_has_active_bomb(request.owner)){
+
+            if(owner == nullptr || owner->kind != EntityKind::player)
                 continue;
-            }
+
+            if((request.fuse_lit && owner_has_active_bomb(request.owner))
+                || (!request.fuse_lit && owner_has_too_many_unlit_bombs(request.owner)))
+                continue;
 
             const Entity bomb{
                 .kind = EntityKind::bomb,
@@ -363,6 +366,9 @@ namespace kotte
 
             if(!available_space)
                 continue;
+
+            if(entity(request.owner).kind == EntityKind::player && request.fuse_lit)
+                player_.number_of_kills_since_last_bomb_ = 0;
 
             const EntityHandle bomb_handle = entities_.create(bomb);
 
@@ -401,9 +407,11 @@ namespace kotte
         // These update lists are non-owning views. A single cleanup pass keeps
         // their iteration dense without teaching each destruction source about
         // every list that happens to reference an entity.
-        std::erase_if(enemy_handles_, [this](EntityHandle handle){
+        player_.number_of_kills_since_last_bomb_ += std::erase_if(enemy_handles_, [this](EntityHandle handle){
             return !entities_.contains(handle);
         });
+
+        player_.kill_upgrade(player_.number_of_kills_since_last_bomb_);
 
         gate_unlocked_ = enemy_handles_.size() == 0;
 
@@ -420,7 +428,7 @@ namespace kotte
             assert(bomb.bomb_state.has_value());
 
             bomb.bomb_state->fuse_lit = true;
-            bomb.bomb_state->fuse_remaining = bomb.bomb_state->fuse_remaining > 0.2f ?
+            bomb.bomb_state->fuse_remaining = bomb.bomb_state->fuse_remaining < 0.2f ?
                 bomb.bomb_state->fuse_remaining :
                 0.2f;
         }
@@ -458,6 +466,7 @@ namespace kotte
                 break;
             case EntityKind::bomb:
                 bombs_to_be_lit_.push_back(handle);
+                blocked_by_crate = true;
                 break;
             case EntityKind::enemy:
                 destroy_entity_requests_.push_back({handle});
@@ -664,7 +673,9 @@ namespace kotte
             "world: {} x {} tiles | {} total", map_.width(), map_.height(), map_.tile_count());
         DrawText(diagnostics.c_str(), 10, window_.height() - 54, 20, RAYWHITE);
 
-        DrawText("move: WASD/arrows | bomb: Space | quit: Q/Escape", 10, window_.height() - 30, 20, LIGHTGRAY);
+        diagnostics = std::format(
+            "move: WASD/arrows | lit bomb {}/1: Space | unlit bomb {}/{}: R| quit: Q/Escape", (uint8_t)!owner_has_active_bomb(player_.get_handle()), player_.get_number_of_concurent_unlit_bombs() - count_unlit_bombs_with_owner(player_.get_handle()), player_.get_number_of_concurent_unlit_bombs());
+        DrawText(diagnostics.c_str(), 10, window_.height() - 30, 20, LIGHTGRAY);
     }
 
     void Application::render_restart_UI() {
@@ -947,6 +958,26 @@ namespace kotte
             return bomb != nullptr
                 && bomb->bomb_state.has_value()
                 && bomb->bomb_state->fuse_lit
+                && bomb->bomb_state->owner == owner;
+        });
+    }
+
+    bool Application::owner_has_too_many_unlit_bombs(EntityHandle owner) const noexcept {
+        const auto& owner_entity = entity(owner);
+        uint8_t allowed_number_of_unlit_bombs = 2;
+
+        if(owner_entity.kind == EntityKind::player)
+            allowed_number_of_unlit_bombs = player_.get_number_of_concurent_unlit_bombs();
+
+        return count_unlit_bombs_with_owner(owner) >= allowed_number_of_unlit_bombs;;
+    }
+
+    uint8_t Application::count_unlit_bombs_with_owner(EntityHandle owner) const noexcept {
+        return std::ranges::count_if(active_bomb_handles_, [this, owner](EntityHandle bomb_handle){
+            const Entity* bomb = entities_.try_get(bomb_handle);
+            return bomb != nullptr
+                && bomb->bomb_state.has_value()
+                && !bomb->bomb_state->fuse_lit
                 && bomb->bomb_state->owner == owner;
         });
     }

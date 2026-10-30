@@ -154,6 +154,8 @@ namespace kotte
         [[nodiscard]] static Vector2 cardinal_vector(CardinalDirection direction) noexcept;
         [[nodiscard]] CardinalDirection different_enemy_direction(CardinalDirection current_direction);
         [[nodiscard]] bool owner_has_active_bomb(EntityHandle owner) const noexcept;
+        [[nodiscard]] bool owner_has_too_many_unlit_bombs(EntityHandle owner) const noexcept;
+        [[nodiscard]] uint8_t count_unlit_bombs_with_owner(EntityHandle owner) const noexcept;
         [[nodiscard]] static Vector2 tile_centre(Vector2 world_position) noexcept;
         [[nodiscard]] static Vector2 tile_centre(int column, int row) noexcept;
         [[nodiscard]] static float entity_roundness(EntityKind kind) noexcept;

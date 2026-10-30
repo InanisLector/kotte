@@ -33,9 +33,10 @@ Use the practical checks in the assignment to validate the acceptance conditions
 | 3. Safe restart | After restart, all used lists get cleared in an appropriate phase of the run cycle, without refering to something that doesn't exist anymore. |
 | 4. Solid bombs with owner escape | Bombs let the owner escape, before preventing morement. If placement would result in bomb sharing a space with another entity - it's aborted. |
 | 5. Blast-range pickup | Default blast range is three, but it increases with 1 by every pick up. Though pick ups are limited by how many spawn, so it's fine. |
-| [# and name of chosen extension 3] |  |
+| 6. Multiple bombs per owner | Because unlit bombs, that have been lit in chain, are no longer "unlit" - they do not count towards capacity. It's possible to fix that with an additional bool, but I do like this variation more. |
 | 7. Chain reactions | Player can spawn as many (at the moment of this note) unlimited unfused bombs, but only one lit, to create chain reactions. Bomb's range is still defined by the range at the moment it was placed |
 | 10. Exit or progression gate | Player does not interact with the gate, before all the enemies are cleared and does after they are, regardless of if the player moved or not at the moment of their opening. Win/loss priority remains correct. |
+| 11. Scoring and combos | I integrated combo system. You max number of unlit bombs you can place is counted by 3 + [max number enemies killed with a single lit bomb (a.k.a includes chained killes)], which encourages a strategic gameplay |
 
 ## Sources and assistance
 
