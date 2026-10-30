@@ -73,10 +73,30 @@ namespace kotte
             float remaining_seconds = 0.0f;
         };
 
-        enum GameState {
+        enum GameState : uint8_t {
             ongoing,
             won,
             lost
+        };
+
+        class SelectionMenu final {
+        private:
+            bool restart_selected = true;
+            float navigation_timer = 0;
+            float navigation_cooldown = 0.15f;
+
+        public:
+            inline bool restart_is_selected() { return restart_selected; }
+            inline void try_move() {
+                if(navigation_timer <= 0) {
+                    restart_selected = !restart_selected;
+                    navigation_timer = navigation_cooldown;
+                }
+            }
+            inline void tick(float delta_time) {
+                if(navigation_timer > 0)
+                    navigation_timer -= delta_time;
+            }
         };
 
         void run_frame(float delta_time);
@@ -106,6 +126,7 @@ namespace kotte
             std::uint8_t range);
         void update_camera(float delta_time) noexcept;
         void render();
+        void render_restart_UI();
         void reset_game();
         PlayerData create_player();
         void populate_entities();
@@ -166,6 +187,7 @@ namespace kotte
         std::uint64_t seed_;
         PlayerData player_;
         GameState game_state_;
+        SelectionMenu menu_ui_;
         bool exit_requested_ = false;
     };
 }

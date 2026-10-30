@@ -26,6 +26,7 @@ namespace kotte
         , seed_{seed}
         , player_ {create_player()}
         , game_state_{GameState::ongoing} {
+        random_ = Random(seed);
         populate_entities();
         initialize_enemies();
     }
@@ -34,7 +35,7 @@ namespace kotte
         while(!window_.should_close() && !exit_requested_){
             run_frame(GetFrameTime());
         }
-    }
+    } 
 
     void Application::run_frame(float delta_time){
         // Full frame order:
@@ -59,9 +60,12 @@ namespace kotte
             resolve_gameplay_facts(delta_time);
             apply_structural_mutations();
             update_presentation(delta_time);
+            render();
+        } else {
+            render();
+            if(IsKeyDown(KEY_R))
+                reset_game();
         }
-
-        render();
     }
 
     void Application::begin_frame() noexcept{
@@ -592,14 +596,13 @@ namespace kotte
     }
 
     PlayerData Application::create_player() {
-        return {entities_.create({EntityKind::player, {tile_size_ * 2.5f, tile_size_ * 2.5f}}), 10, 0.350};
+        return PlayerData(entities_.create({EntityKind::player, {tile_size_ * 2.5f, tile_size_ * 2.5f}}), 10, 0.350);
     }
 
     void Application::populate_entities(){
         // Match the generation density so initial creation does not repeatedly
         // relocate slot storage. Handles remain valid even if this estimate grows.
         entities_.reserve(map_.tile_count() / 4);
-
 
         // Player
 

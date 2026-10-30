@@ -63,7 +63,8 @@ namespace kotte
     }
 
     void SpatialGrid::clear() {
-        cells_.clear();
+        for(Cell& cell : cells_)
+            cell.clear();
     }
 
     SpatialQuery SpatialGrid::query(Rectangle world_bounds) const{
