@@ -53,11 +53,13 @@ namespace kotte
         struct FrameActions final {
             Vector2 player_movement_direction{};
             bool place_bomb = false;
+            bool place_unlit_bomb = false;
         };
 
         struct PlaceBombRequest final {
             EntityHandle owner;
             Vector2 world_position{};
+            bool fuse_lit = true;
         };
 
         struct BombDetonated final {
@@ -118,6 +120,7 @@ namespace kotte
         void queue_bomb_placement();
         void apply_entity_destructions();
         void apply_bomb_placements();
+        void apply_bomb_lighting();
         [[nodiscard]] bool resolve_blast_tile(
             BlastEffect& effect,
             int column,
@@ -192,6 +195,7 @@ namespace kotte
         std::vector<PlaceBombRequest> place_bomb_requests_;
         std::vector<BombDetonated> bomb_detonated_facts_;
         std::vector<DestroyEntityRequest> destroy_entity_requests_;
+        std::vector<EntityHandle> bombs_to_be_lit_;
         std::vector<BlastEffect> blast_effects_;
         Diagnostics diagnostics_;
         std::uint64_t seed_;

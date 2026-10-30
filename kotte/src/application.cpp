@@ -78,6 +78,7 @@ namespace kotte
             request_exit();
         }
         frame_actions_.place_bomb = IsKeyPressed(KEY_SPACE);
+        frame_actions_.place_unlit_bomb = IsKeyPressed(KEY_R);
 
         Vector2& movement_direction = frame_actions_.player_movement_direction;
         if(IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)){
@@ -116,6 +117,10 @@ namespace kotte
             }
 
             BombState& state = *bomb->bomb_state;
+
+            if(!state.fuse_lit)
+                continue;
+
             state.fuse_remaining -= delta_time;
             if(state.fuse_remaining > 0.0f){
                 continue;
@@ -190,6 +195,7 @@ namespace kotte
     void Application::apply_structural_mutations(){
         // Entity storage and every derived index change only at this boundary.
         apply_bomb_placements();
+        apply_bomb_lighting();
         apply_entity_destructions();
     }
 
@@ -220,7 +226,7 @@ namespace kotte
             if(menu_ui_.restart_is_selected())
                 reset_game();
             else
-                exit_requested_ = true;
+                request_exit();
         }
     }
 
@@ -309,7 +315,7 @@ namespace kotte
     }
 
     void Application::queue_bomb_placement(){
-        if(!frame_actions_.place_bomb){
+        if(!frame_actions_.place_bomb && !frame_actions_.place_unlit_bomb){
             return;
         }
 
@@ -317,7 +323,8 @@ namespace kotte
         // deliberately outlives this simulation phase.
         place_bomb_requests_.push_back({
             player_.get_handle(),
-            tile_centre(player().world_position)
+            tile_centre(player().world_position),
+            frame_actions_.place_bomb // Because otherwise it could only have been an unlit one
         });
     }
 
@@ -335,7 +342,8 @@ namespace kotte
                 .bomb_state = BombState{
                     .owner = request.owner,
                     .fuse_remaining = bomb_fuse_seconds_,
-                    .blast_range = owner->kind == EntityKind::player ? player_.get_bomb_range() : bomb_blast_range_ // redundant, but alas
+                    .blast_range = owner->kind == EntityKind::player ? player_.get_bomb_range() : bomb_blast_range_, // redundant, but alas
+                    .fuse_lit = request.fuse_lit
                 }
             };
 
@@ -406,6 +414,20 @@ namespace kotte
         destroy_entity_requests_.clear();
     }
 
+    void Application::apply_bomb_lighting() {
+        for(const auto& handle : bombs_to_be_lit_) {
+            auto& bomb = entity(handle);
+            assert(bomb.bomb_state.has_value());
+
+            bomb.bomb_state->fuse_lit = true;
+            bomb.bomb_state->fuse_remaining = bomb.bomb_state->fuse_remaining > 0.2f ?
+                bomb.bomb_state->fuse_remaining :
+                0.2f;
+        }
+
+        bombs_to_be_lit_.clear();
+    }
+
     bool Application::resolve_blast_tile(
         BlastEffect& effect,
         int column,
@@ -431,9 +453,11 @@ namespace kotte
             }
 
             switch(candidate->kind){
-            case EntityKind::bomb:
             case EntityKind::pickup:
             case EntityKind::gate:
+                break;
+            case EntityKind::bomb:
+                bombs_to_be_lit_.push_back(handle);
                 break;
             case EntityKind::enemy:
                 destroy_entity_requests_.push_back({handle});
@@ -922,6 +946,7 @@ namespace kotte
             const Entity* bomb = entities_.try_get(bomb_handle);
             return bomb != nullptr
                 && bomb->bomb_state.has_value()
+                && bomb->bomb_state->fuse_lit
                 && bomb->bomb_state->owner == owner;
         });
     }

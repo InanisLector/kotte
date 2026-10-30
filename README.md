@@ -28,18 +28,14 @@ Use the practical checks in the assignment to validate the acceptance conditions
 
 | Feature | Check, observed result, and expected behaviour |
 | --- | --- |
-| 1. Player damage and death | All is as expected. All test mentioned in Canvas passed. |
-| 2. Round states and objective | All is as expected. All test mentioned in Canvas passed. |
-| 3. Safe restart | All is as expected. All test mentioned in Canvas passed. |
-| 4. Solid bombs with owner escape | All is as expected. All test mentioned in Canvas passed. |
-| 5. Blast-range pickup | All is as expected. All test mentioned in Canvas passed. |
-| 10. Exit or progression gate | I really can't say anything. Everything goes as it's meant to. |
-| [# and name of chosen extension 2] | [what I tested, what I observed, and whether it matched the expected behaviour] |
-| [# and name of chosen extension 3] | [what I tested, what I observed, and whether it matched the expected behaviour] |
-
-Example: “I ended a round with live bombs and restarted three times to check that old-round state was cleared. No old explosions appeared, and bomb capacity reset each time.” Report your actual results, including any failures or remaining limitations; stating that something “works” does not describe a check.
-
-**Known issues:** [remaining problems and how to encounter them, or “None known after testing”]
+| 1. Player damage and death | I checked both possible damage sources and the delay between damage ticks. All works as expected. |
+| 2. Round states and objective | I if you both lose and win on the same frame - winning is prioritised, as expected. |
+| 3. Safe restart | After restart, all used lists get cleared in an appropriate phase of the run cycle, without refering to something that doesn't exist anymore. |
+| 4. Solid bombs with owner escape | Bombs let the owner escape, before preventing morement. If placement would result in bomb sharing a space with another entity - it's aborted. |
+| 5. Blast-range pickup | Default blast range is three, but it increases with 1 by every pick up. Though pick ups are limited by how many spawn, so it's fine. |
+| 6. Chain reactions | Player can spawn as many (at the moment of this note) unlimited unfused bombs, but only one lit, to create chain reactions. Bomb's range is still defined by the range at the moment it was placed |
+| [# and name of chosen extension 3] |  |
+| 10. Exit or progression gate | Player does not interact with the gate, before all the enemies are cleared and does after they are, regardless of if the player moved or not at the moment of their opening. Win/loss priority remains correct. |
 
 ## Sources and assistance
 

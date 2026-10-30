@@ -58,6 +58,7 @@ namespace kotte
         std::uint8_t blast_range = 0;
         bool detonation_requested = false;
         bool owner_has_left = false;
+        bool fuse_lit = true;
     };
 
     struct Entity final {
