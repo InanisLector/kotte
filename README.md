@@ -1,4 +1,4 @@
-# Bomberman World — [your game title]
+# Bomberman World - Daisy chain
 
 **Student:** Kuznietsov Illia
 
@@ -10,21 +10,18 @@ Since I have replaced raylib with submodules for it to be compilable on linux, y
 - git submodule update --init --recursive
 
 ##### Then just use cmake to compile it
+For windows:
 - cmake --build --preset windows
-
-> Replace the prompts below and remove these instructions. Keep answers brief. Your implementation explanations and reflection belong in the presentation; you do not need to write them out here. Complete the final section only if seeking Pass with Distinction (VG).
+For linux:
+- cmake --build --preset default
 
 ## How to play
 
-- **Controls:** [movement, bombs, restart, and any extension controls]
-- **Objective and rules:** [how to win/lose; which result wins if both happen together; any extension rules needed to understand the game]
-- **Configurations / demo setup:** [how to select gameplay/stress configurations and use any special setup or debug keys; write “default” where appropriate]
+- **Controls:** movement WASD, lit bombs Space, unlit bombs R, restart Space in menu, AD to navigate menu
+- **Objective and rules:** To win you need to clear all the enemies and then go into the Gate (right-bottom corner). Winning takes priority. If you kill multiple enemies with a chain - you get more unlit bombs to use.
+- **Configurations / demo setup:** nothing like that
 
 ## Features and validation
-
-(delete this pre-amble before submitting the assignment) Complete the five required features and three extensions of your choice. For each row, document **at least one useful check: what you tested, what you observed, and how the result compares with the expected behaviour**. One or two sentences per feature are enough. Choose a check that could reveal a mistake, such as a boundary case or interaction.
-
-Use the practical checks in the assignment to validate the acceptance conditions during development; this table is a small sample of that work. Manual play in a small, repeatable setup is sufficient. You can also use a debugger, temporary logging, or small scenarios set up in code. Screenshots, recordings, automated tests etc are welcome, but not required. Be ready to explain the relevant rules in your code.
 
 | Feature | Check, observed result, and expected behaviour |
 | --- | --- |
@@ -42,30 +39,48 @@ Use the practical checks in the assignment to validate the acceptance conditions
 
 This project builds on the shared Kotte foundations.
 
-[Briefly identify meaningful external code/resources, discussion or collaboration, and AI assistance. Link to sources where relevant, say what they contributed, and explain what you checked yourself. State “None beyond the course material” if applicable. No prompt transcript or activity diary is needed. Retain required licence/attribution notices.]
+All has been done by myself.
 
-## Architectural investigation — VG only
+## Architectural investigation - VG only
 
-Delete this section for a G submission. For VG, pose a focused engineering question about one decision in your implementation, investigate it, and draw a conclusion from evidence. Documenting the explanation already required for G is not enough. Aim for half a page to one page, excluding small tables, diagrams, or code excerpts. You can use the same decision in your presentation too.
+**Question:** Does routing player death through an event in `[Application]` provide any decoupling compared to a direct method call?
 
 ### Decision
 
-[State the question you are investigating and the implementation decision it concerns. Describe your current approach and a plausible alternative. Identify the relevant code. You do not need to implement the alternative.]
+Currently, player death is handled with an event: `[OnDeath]` is declared in `[Entity.h:44]`, invoked in `[Entity.cpp:24]`, subscribed to in `[Application.cpp:737]`, and handled by a lambda defined `[Application.cpp:737-740]`, which executes all the actions associated with player's death.
+
+The plausible alternative would be direct management from `[Application]`. The only spot the code would have to check would be `[Application.cpp:192]`, where I could check if health is at zero and do the corresponding actions from lambda function on the spot.
+
+I chose the event because it lets the object that owns the state announce changes without outsiders checking it, which keeps state checks encapsulated and reduces context size required to read the code.
 
 ### Method
 
-[How did you investigate the decision? Give enough detail to reproduce the key observation: setup, input, configuration/seed, and the test, trace, debugger inspection, or other method used.]
+1. Located every part of the death flow: condition, invoke, subscription, handler, and effect. (listed in Decision)
+2. Counted the classes involved in the flow.
+3. Estimated the cost of one change request, (e.g. play a sound), under both designs.
 
 ### Evidence
 
-[What did you actually observe in your game? Include the relevant result or a small excerpt, table, or link to supporting material.]
+| Measure | Event callback | Direct check | Observation |
+| --- | --- | --- | --- |
+| Stack traces | `[Application::run]` -> `[Application::run_frame]` -> `[Application::resolve_gameplay_facts]` -> `[PlayerData::apply_update]` -> `[Event::invoke]` -> `[Application::[]]` | `[Application::run]` -> `[Application::run_frame]` -> `[Application::resolve_gameplay_facts]` -> `[Application::[]]` | When excluding the shared stack paths, stack trace is much shorter with direct check (2 added vs 0 added) |
+| Classes executing logic | `[Application]`, `[PlayerData]`, `[Event]` | `[Application]` | Event path abstracts part of the logic out into `[PlayerData]` with `[Event]` class acting as glue |
+| Estimation to add a playing sound on death | one line in the lambda on `[Application.cpp:737]` | one line in the code block on `[Application.cpp:192]` | the logic to be executed by the `[Application]` remains inside that class, so cost of adding new logic is the same, as long as `[Application]` is the only consumer of the event |
 
 ### Interpretation
 
-[Explain why it happened using the relevant code or architecture. Analyse at least one edge case, failure, defect, limitation, or trade-off illustrated by the investigation. Discuss relevant consequences for correctness, maintainability, performance, and/or scalability; you do not need to cover all four.]
+The event has one raise site `[Entity.cpp:24]` (only ever called from `[Application::192]`) and one handler `[Application.cpp:737]`, registered once at startup. The stack trace is therefore linear and fully traceable: there is no fan-out, no fan-in, and no runtime change in subscribers. With this one-to-one wiring, the event behaves like an indirect direct call. It does remove the entity's knowledge of who reacts, but since the only subscriber is `[Application]`, which already owns every effect, no reaction logic can move out of it.
+The pattern's purpose is to decouple a publisher from the independent subscribers, and no such separation exists here.
+Higher degree of responsibility splitting (e.g. more peer-level managers interacting directly with one another instead of through one higher-level manager) would create independent objects to be decoupled.
+
+Because there is one raise site and one handler, ordering between handlers and re-entrancy cannot occur here, and Application is indifferent to call order anyway, so the usual costs of events are absent.
+The trade-off is in extensibility: a direct check at `[Application.cpp:192]` is sufficient only while health changes in one place. A second caller or a second reaction would need its own check, whereas the event keeps the check inside the entity and lets reactions be added by subscribing.
 
 ### Conclusion
 
-[When is your approach appropriate, what limits it, and when might an alternative become preferable? Base the conclusion on your evidence. Confirming that the current approach is suitable is a valid result.]
+With god class architecture, a direct call is simpler to build something short term, since all the information is already available to the god class, but a lot less appropriate for expansion.
+Events become worthwhile once separate classes are large and contained enough to hide information, and have, at least 2 independent subscribers (e.g. score system, audio system, game-state system) react to them.
+The trigger for refactoring would be splitting responsibilities out of `Application`.
+Before that - using observer pattern only provides decoupling exclusively on the publisher's side.
 
-<!-- Submission: commit and push this README with your source to GitHub or the internal Gitea server. Submit the final commit link and a runnable Release ZIP from that version in Studium. Ensure the teacher can access the repository throughout assessment. -->
+I kept the event for death because it costs little and documents intent, but I did not convert further effects since the evidence shows no benefit on subscriver side, until responsibilities are separated.
